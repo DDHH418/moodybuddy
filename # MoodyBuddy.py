@@ -85,14 +85,18 @@ def save_diary(username, diary):
 st.set_page_config(page_title="MoodyBuddy - Tamil Mood Songs", page_icon="🎵")
 st.title("🎵 MoodyBuddy")
 
-# Authentication
+# Initialize session state
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+
 menu = ["Login", "Register"]
 choice = st.sidebar.selectbox("Menu", menu)
 
 if choice == "Register":
     st.sidebar.subheader("Create New Account")
-    new_user = st.sidebar.text_input("Username")
-    new_password = st.sidebar.text_input("Password", type='password')
+    new_user = st.sidebar.text_input("Username", key="register_user")
+    new_password = st.sidebar.text_input("Password", type='password', key="register_pass")
     if st.sidebar.button("Register"):
         if register_user(new_user, new_password):
             st.sidebar.success("Account created successfully!")
@@ -101,40 +105,47 @@ if choice == "Register":
 
 elif choice == "Login":
     st.sidebar.subheader("Login to Your Account")
-    username = st.sidebar.text_input("Username")
-    password = st.sidebar.text_input("Password", type='password')
+    username = st.sidebar.text_input("Username", key="login_user")
+    password = st.sidebar.text_input("Password", type='password', key="login_pass")
     if st.sidebar.button("Login"):
         if login_user(username, password):
-            st.sidebar.success(f"Welcome {username}!")
-
-            # Mood-based recommendation
-            st.subheader("Choose your mood and get Tamil song suggestions 🎶")
-            mood = st.selectbox("Select your mood:", list(song_data.keys()))
-
-            if mood:
-                st.markdown(f"### Suggested Tamil Songs for {mood} Mood:")
-                for song, link in song_data[mood]:
-                    st.markdown(f"- [{song}]({link})")
-
-            st.markdown("---")
-
-            # Personal Diary
-            st.subheader("📝 Your Personal Diary")
-            diary = load_diary(username)
-            today = str(datetime.date.today())
-            entry = diary.get(today, "")
-
-            new_entry = st.text_area("Today's Entry:", value=entry, height=200)
-            if st.button("Save Diary Entry"):
-                diary[today] = new_entry
-                save_diary(username, diary)
-                st.success("Diary entry saved!")
-
-            if st.checkbox("Show Past Entries"):
-                for date in sorted(diary.keys(), reverse=True):
-                    st.markdown(f"**{date}**\n{diary[date]}")
-
-            st.markdown("---")
-            st.caption("Made with ❤️ for Tamil music lovers")
+            st.session_state.logged_in = True
+            st.session_state.username = username
+            st.experimental_rerun()  # Fix: Force rerun after successful login
         else:
             st.sidebar.error("Invalid Username or Password")
+
+# ------------------------------
+# Main App Content (after login)
+# ------------------------------
+if st.session_state.logged_in:
+    username = st.session_state.username
+
+    st.subheader("Choose your mood and get Tamil song suggestions 🎶")
+    mood = st.selectbox("Select your mood:", list(song_data.keys()))
+
+    if mood:
+        st.markdown(f"### Suggested Tamil Songs for {mood} Mood:")
+        for song, link in song_data[mood]:
+            st.markdown(f"- [{song}]({link})")
+
+    st.markdown("---")
+
+    # Personal Diary
+    st.subheader("📝 Your Personal Diary")
+    diary = load_diary(username)
+    today = str(datetime.date.today())
+    entry = diary.get(today, "")
+
+    new_entry = st.text_area("Today's Entry:", value=entry, height=200, key="diary_input")
+    if st.button("Save Diary Entry"):
+        diary[today] = new_entry
+        save_diary(username, diary)
+        st.success("Diary entry saved!")
+
+    if st.checkbox("Show Past Entries"):
+        for date in sorted(diary.keys(), reverse=True):
+            st.markdown(f"**{date}**\n{diary[date]}")
+
+    st.markdown("---")
+    st.caption("Made with ❤️ for Tamil music lovers")
