@@ -1,5 +1,3 @@
-# MoodyBuddy - Tamil Mood Music Recommender + Personal Diary (Streamlit App with Login)
-
 import streamlit as st
 import json
 import os
@@ -10,7 +8,7 @@ import datetime
 # ------------------------------
 song_data = {
     "Happy": [
-        ("Vthisaathi Coming", "https://open.spotify.com/track/0u2XOjUhTaUR2cw5C5u5uZ"),
+        ("Vaathi Coming", "https://open.spotify.com/track/0u2XOjUhTaUR2cw5C5u5uZ"),
         ("Jimikki Ponnu", "https://open.spotify.com/track/1ywVjkY1vVqBkSHB0qqyjs"),
         ("Aaluma Doluma", "https://open.spotify.com/track/5pqLiyab2B1kGdKFiT4uKY")
     ],
@@ -44,19 +42,24 @@ if not os.path.exists(users_file):
 if not os.path.exists(diary_folder):
     os.makedirs(diary_folder)
 
-with open(users_file, "r") as f:
-    users = json.load(f)
+try:
+    with open(users_file, "r") as f:
+        users = json.load(f)
+except:
+    users = {}
 
 # ------------------------------
 # User Authentication System
 # ------------------------------
 def register_user(username, password):
+    if not username or not password:
+        return "empty"
     if username in users:
-        return False
+        return "exists"
     users[username] = password
     with open(users_file, "w") as f:
         json.dump(users, f)
-    return True
+    return "success"
 
 def login_user(username, password):
     return users.get(username) == password
@@ -70,8 +73,11 @@ def get_diary_path(username):
 def load_diary(username):
     diary_path = get_diary_path(username)
     if os.path.exists(diary_path):
-        with open(diary_path, "r") as f:
-            return json.load(f)
+        try:
+            with open(diary_path, "r") as f:
+                return json.load(f)
+        except:
+            return {}
     return {}
 
 def save_diary(username, diary):
@@ -98,10 +104,13 @@ if choice == "Register":
     new_user = st.sidebar.text_input("Username", key="register_user")
     new_password = st.sidebar.text_input("Password", type='password', key="register_pass")
     if st.sidebar.button("Register"):
-        if register_user(new_user, new_password):
+        result = register_user(new_user, new_password)
+        if result == "success":
             st.sidebar.success("Account created successfully!")
-        else:
+        elif result == "exists":
             st.sidebar.warning("Username already exists.")
+        else:
+            st.sidebar.error("Please enter valid username and password.")
 
 elif choice == "Login":
     st.sidebar.subheader("Login to Your Account")
@@ -111,7 +120,7 @@ elif choice == "Login":
         if login_user(username, password):
             st.session_state.logged_in = True
             st.session_state.username = username
-            st.experimental_rerun()  # Fix: Force rerun after successful login
+            st.experimental_rerun()
         else:
             st.sidebar.error("Invalid Username or Password")
 
@@ -120,6 +129,11 @@ elif choice == "Login":
 # ------------------------------
 if st.session_state.logged_in:
     username = st.session_state.username
+
+    if st.sidebar.button("Logout"):
+        st.session_state.logged_in = False
+        st.session_state.username = ""
+        st.experimental_rerun()
 
     st.subheader("Choose your mood and get Tamil song suggestions 🎶")
     mood = st.selectbox("Select your mood:", list(song_data.keys()))
